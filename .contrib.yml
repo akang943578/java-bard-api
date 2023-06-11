@@ -1,0 +1,7 @@
+name: Java Bard API
+description: The java package that returns response of [Google Bard](https://bard.google.com/) through value of cookie.
+#tags:
+#  - tag1
+#  - tag2
+license: MIT
+repository: https://github.com/akang943578/java-bard-api
