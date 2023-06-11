@@ -57,7 +57,7 @@ Set this cookie value in your profile, such as `~/.bash_profile` or `~/.zshrc` a
 export _BARD_API_KEY=XXXXXXXXX_*********************xxxxxxxxxyyyyyyyyyyyyyzz.
 ```
 
-4. Then you can use it in your java code. (Note: perhaps you need to restart you IDE to apply the environment variable)
+4. Then you can use it in your java code. (Note: perhaps you need to restart your IDE to apply the environment variable)
 ```java
 import com.api.bard.BardClient;
 
