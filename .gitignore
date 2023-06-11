@@ -1,0 +1,42 @@
+# Compiled class file
+*.class
+
+# Log files
+log/
+*.log
+
+# IntelliJ IDEA
+.idea/
+
+# VS Code
+.vscode/
+.editorconfig
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+# Gradle
+.gradle/
+build/
+
+# Spring Boot
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Other
+*.swp
+*~
+.DS_Store
