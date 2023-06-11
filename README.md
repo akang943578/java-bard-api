@@ -42,7 +42,22 @@ Currently, it can be dependent by github maven repo.
     </dependency>
   </dependencies>
 ```
-3. Enjoy!
+
+3. Authentication
+> **Warning** Do not expose the `__Secure-1PSID`
+* Visit https://bard.google.com/
+* F12 for console
+* Session: Application → Cookies → Copy the value of  `__Secure-1PSID` cookie.
+
+Note that while I referred to `__Secure-1PSID` value as an API key for convenience, it is not an officially provided API key.
+Cookie value subject to frequent changes. Verify the value again if an error occurs. Most errors occur when an invalid cookie value is entered.
+
+Set this cookie value in your profile, such as `~/.bash_profile` or `~/.zshrc` according to your shell.
+```shell
+export _BARD_API_KEY=XXXXXXXXX_*********************xxxxxxxxxyyyyyyyyyyyyyzz.
+```
+
+4. Then you can use it in your java code. (Note: perhaps you need to restart you IDE to apply the environment variable)
 ```java
 import com.api.bard.BardClient;
 
@@ -72,20 +87,7 @@ I am not a person, and I do not have any feelings or emotions. I am a computer p
 I am excited to see what the future holds for me, and I hope that I can continue to learn and grow. I also hope that I can be a helpful and informative resource for you.
 ```
 
-<br>
-
-## Authentication
-> **Warning** Do not expose the `__Secure-1PSID`
-1. Visit https://bard.google.com/
-2. F12 for console
-3. Session: Application → Cookies → Copy the value of  `__Secure-1PSID` cookie.
-
-Note that while I referred to `__Secure-1PSID` value as an API key for convenience, it is not an officially provided API key.
-Cookie value subject to frequent changes. Verify the value again if an error occurs. Most errors occur when an invalid cookie value is entered.
-
-<br>
-
-If you need to set multiple Cookie values
+5. If you need to set multiple Cookie values
 
 - [Bard Cookies](https://github.com/dsdanielpark/Bard-API/blob/main/README_DEV.md#bard-which-can-get-cookies) - After confirming that multiple cookie values are required to receive responses reliably in certain countries, I will deploy it for testing purposes. Please debug and create a pull request
 
