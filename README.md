@@ -186,7 +186,7 @@ One of the most popular translation API is [Google Translate](https://cloud.goog
 I would like to express my sincere gratitude for the contributions made by all the contributors.
 
 <a href="https://github.com/akang943578/java-bard-api/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=akang943578/java-bard-api" />
+  <img src="https://github.com/akang943578/java-bard-api/graphs/contributors" />
 </a>
 
 
