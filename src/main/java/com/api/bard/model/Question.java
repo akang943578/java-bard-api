@@ -10,10 +10,4 @@ public class Question {
 
     @NonNull
     private String question;
-    @Builder.Default
-    private String conversationId = "";
-    @Builder.Default
-    private String responseId = "";
-    @Builder.Default
-    private String choiceId = "";
 }

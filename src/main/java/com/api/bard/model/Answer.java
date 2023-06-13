@@ -12,6 +12,7 @@ public class Answer {
     private String answer;
     private String conversationId;
     private String responseId;
+    private String choiceId;
     private List<String> factualityQueries;
     private String textQuery;
     private List<Choice> choices;

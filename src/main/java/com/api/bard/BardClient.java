@@ -41,8 +41,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
-@Data
-public class BardClient {
+public class BardClient implements IBardClient {
 
     private static final String HOST = "bard.google.com";
     private static final String URL = "https://bard.google.com";
@@ -54,43 +53,46 @@ public class BardClient {
     private static final String CONTENT_TYPE = "application/x-www-form-urlencoded;charset=UTF-8";
 
     private String token;
-    private Map<String, String> headers;
-    private String snim0e;
+    private String snim0e = "";
+    private String conversationId = "";
+    private String responseId = "";
+    private String choiceId = "";
 
-    private int reqid = Integer.parseInt(String.format("%04d", new Random().nextInt(10000)));
-    private URLCodec urlCodec = new URLCodec();
-    private Gson gson = new Gson();
+    private Map<String, String> headers;
     private RequestConfig requestConfig = RequestConfig.custom()
         .setConnectTimeout(Timeout.of(30, TimeUnit.SECONDS))
         .setResponseTimeout(Timeout.of(30, TimeUnit.SECONDS))
         .build();
 
-    public BardClient(@NonNull String token) {
-        this.token = token;
-        this.snim0e = fetchSNlM0e();
+    private int reqid = Integer.parseInt(String.format("%04d", new Random().nextInt(10000)));
+    private URLCodec urlCodec = new URLCodec();
+    private Gson gson = new Gson();
+
+
+    public BardClient(String token) {
+        this(token, null, null);
+    }
+
+    public BardClient(String token, Map<String, String> headers) {
+        this(token, headers, null);
+    }
+
+    public BardClient(String token, RequestConfig requestConfig) {
+        this(token, null, requestConfig);
     }
 
     public BardClient(@NonNull String token,
-                      @NonNull Map<String, String> headers) {
+                      Map<String, String> headers,
+                      RequestConfig requestConfig) {
         this.token = token;
         this.headers = headers;
-        this.snim0e = fetchSNlM0e();
-    }
 
-    public BardClient(@NonNull String token,
-                      @NonNull RequestConfig requestConfig) {
-        this.token = token;
-        this.requestConfig = requestConfig;
-        this.snim0e = fetchSNlM0e();
-    }
-
-    public BardClient(@NonNull String token,
-                      @NonNull Map<String, String> headers,
-                      @NonNull RequestConfig requestConfig) {
-        this.token = token;
-        this.headers = headers;
-        this.requestConfig = requestConfig;
-        this.snim0e = fetchSNlM0e();
+        if (requestConfig == null) {
+            this.requestConfig = RequestConfig.custom()
+                .setConnectTimeout(Timeout.of(30, TimeUnit.SECONDS))
+                .setResponseTimeout(Timeout.of(30, TimeUnit.SECONDS))
+                .build();
+        }
     }
 
     @Data
@@ -100,10 +102,7 @@ public class BardClient {
         private String content;
     }
 
-    public Answer getAnswer(String question) throws BardApiException {
-        return getAnswer(Question.builder().question(question).build());
-    }
-
+    @Override
     public Answer getAnswer(Question question) throws BardApiException {
         if (question == null || question.getQuestion().isEmpty()) {
             log.error("Question is null or empty");
@@ -111,6 +110,10 @@ public class BardClient {
         }
 
         try {
+            if (snim0e == null || snim0e.isEmpty()) {
+                this.snim0e = fetchSNlM0e();
+            }
+
             Map<String, String> params = new LinkedHashMap<>();
             params.put("bl", "boq_assistant-bard-web-server_20230419.00_p1");
             params.put("_reqid", String.valueOf(reqid));
@@ -118,8 +121,7 @@ public class BardClient {
 
             String fReq = String.format(
                 "[null,\"[[\\\"%s\\\"],null,[\\\"%s\\\",\\\"%s\\\",\\\"%s\\\"]]\"]",
-                question.getQuestion(), question.getConversationId(),
-                question.getResponseId(), question.getChoiceId());
+                question.getQuestion(), conversationId, responseId, choiceId);
 
             Map<String, String> data = new LinkedHashMap<>();
             data.put("f.req", fReq);
@@ -139,11 +141,25 @@ public class BardClient {
             String[] responseLines = response.split("\n");
             String jsonLine = responseLines[3];
 
-            return parseBardResult(jsonLine);
+            Answer answer = parseBardResult(jsonLine);
+
+            this.conversationId = answer.getConversationId();
+            this.responseId = answer.getResponseId();
+            this.choiceId = answer.getChoices().get(0).getId();
+
+            return answer;
         } catch (Exception e) {
             log.error("Response Error, exception thrown. question: {}", question, e);
             throw new BardApiException("Response Error, exception thrown. question: " + question, e);
         }
+    }
+
+    @Override
+    public void reset() throws BardApiException {
+        snim0e = "";
+        conversationId = "";
+        responseId = "";
+        choiceId = "";
     }
 
     private String fetchSNlM0e() {
@@ -259,25 +275,41 @@ public class BardClient {
         String conversationId = jsonElements.get(1).getAsJsonArray().get(0).getAsString();
         String responseId = jsonElements.get(1).getAsJsonArray().get(1).getAsString();
 
-        List<String> factualityQueries = jsonElements.get(3)
-            .getAsJsonArray().asList().stream()
-            .map(JsonElement::getAsString)
-            .collect(Collectors.toList());
-        String textQuery = jsonElements.get(2).getAsJsonArray().get(0).getAsJsonArray().get(0).getAsString();
-        List<Answer.Choice> choices = jsonElements.get(4).getAsJsonArray().asList().stream()
-            .map(x -> {
-                JsonArray jsonArray = x.getAsJsonArray();
-                return Answer.Choice.builder()
-                    .id(jsonArray.get(0).getAsString())
-                    .content(jsonArray.get(1).getAsString())
-                    .build();
-            })
-            .collect(Collectors.toList());
+        List<String> factualityQueries = null;
+        try {
+            factualityQueries = jsonElements.get(3)
+                .getAsJsonArray().asList().stream()
+                .map(JsonElement::getAsString)
+                .collect(Collectors.toList());
+        } catch (Exception e) {
+            // pass
+        }
+        String textQuery = null;
+        try {
+            textQuery = jsonElements.get(2).getAsJsonArray().get(0).getAsJsonArray().get(0).getAsString();
+        } catch (Exception e) {
+            // pass
+        }
+        List<Answer.Choice> choices = null;
+        try {
+            choices = jsonElements.get(4).getAsJsonArray().asList().stream()
+                .map(x -> {
+                    JsonArray jsonArray = x.getAsJsonArray();
+                    return Answer.Choice.builder()
+                        .id(jsonArray.get(0).getAsString())
+                        .content(jsonArray.get(1).getAsString())
+                        .build();
+                })
+                .collect(Collectors.toList());
+        } catch (Exception e) {
+            // pass
+        }
 
         return Answer.builder()
             .answer(content)
             .conversationId(conversationId)
             .responseId(responseId)
+            .choiceId(choices.get(0).getId())
             .factualityQueries(factualityQueries)
             .textQuery(textQuery)
             .choices(choices)
