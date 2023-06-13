@@ -38,7 +38,7 @@ Currently, it can be dependent by github maven repo.
     <dependency>
       <groupId>com.api.bard</groupId>
       <artifactId>java-bard-api</artifactId>
-      <version>1.0</version>
+      <version>1.0.1</version>
     </dependency>
   </dependencies>
 ```
@@ -65,9 +65,9 @@ public class BardClientMain {
 
     public static void main(String[] args) {
         String token = System.getenv("_BARD_API_KEY");
-        BardClient bardClient = new BardClient(token);
+        IBardClient bardClient = BardClient.builder(token).build();
 
-        String answer = bardClient.getAnswer("who are you?").getAnswer();
+        String answer = bardClient.getAnswer("Who are you?").getAnswer();
         System.out.println(answer);
     }
 }
@@ -101,7 +101,6 @@ I am excited to see what the future holds for me, and I hope that I can continue
 import com.api.bard.model.Answer;
 import com.api.bard.model.Question;
 import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.core5.http.HttpHost;
 import org.apache.hc.core5.util.Timeout;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -113,63 +112,67 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class BardClientTest {
-  private String token;
+    private String token;
 
-  @BeforeEach
-  public void setup() {
-    token = System.getenv("_BARD_API_KEY");
-    Assertions.assertNotNull(token);
-  }
+    @BeforeEach
+    public void setup() {
+        token = System.getenv("_BARD_API_KEY");
+        Assertions.assertNotNull(token);
+    }
 
-  /**
-   * Simple Usage
-   */
-  @Test
-  public void testGetAnswer_happyCase() {
-    BardClient bardClient = new BardClient(token);
+    /**
+     * Simple usage
+     */
+    @Test
+    public void testGetAnswer_happyCase() {
+        IBardClient bardClient = BardClient.builder(token).build();
 
-    // Simplest way to get answer
-    Answer answer = bardClient.getAnswer("who are you");
-    Assertions.assertNotNull(answer.getAnswer());
+        // Simplest way to get answer
+        Answer answer = bardClient.getAnswer("Who is current president of USA?");
+        Assertions.assertNotNull(answer.getAnswer());
 
-    // Get answer with more options, such as conversationId, responseId, choiceId
-    Answer answer2 = bardClient.getAnswer(Question.builder()
-      .responseId(answer.getResponseId())
-      .conversationId(answer.getConversationId())
-      .choiceId(answer.getChoices().get(0).getId())
-      .question("what's your name").build());
-    Assertions.assertNotNull(answer2.getAnswer());
-  }
+        // Get answer with Question object
+        Answer answer2 = bardClient.getAnswer(
+            Question.builder()
+                .question("Who is his wife?")
+                .build());
+        Assertions.assertNotNull(answer2.getAnswer());
 
-  /**
-   * Advanced usage
-   */
-  @Test
-  public void testGetAnswer_customClient() {
-    // set custom headers
-    Map<String, String> headers = new HashMap<>();
-    headers.put("TestHeader", "TestValue");
-    headers.put("TestHeader2", "TestValue2");
+        // Reset session
+        bardClient.reset();
 
-    // set custom request config
-    RequestConfig requestConfig = RequestConfig.custom()
-      // set timeout
-      .setConnectTimeout(Timeout.of(20, TimeUnit.SECONDS))
-      .setResponseTimeout(Timeout.of(20, TimeUnit.SECONDS))
-      // If you can not access google.com domain directly,
-      // you can use the following to set http proxy.
-//            .setProxy(HttpHost.create("http://localhost:8080"))
-      // set other options in requestConfig...
-      .build();
+        Answer answer3 = bardClient.getAnswer("Who is his wife?");
+        Assertions.assertNotNull(answer3.getAnswer());
+    }
 
-    BardClient bardClient = new BardClient(token, headers, requestConfig);
+    /**
+     * Advanced usage: set custom http headers and request config
+     */
+    @Test
+    public void testGetAnswer_customClient() throws URISyntaxException {
+        // set custom headers
+        Map<String, String> headers = new HashMap<>();
+        headers.put("TestHeader", "TestValue");
+        headers.put("TestHeader2", "TestValue2");
 
-    Answer answer = bardClient.getAnswer("누구세요");
-    Assertions.assertNotNull(answer.getAnswer());
+        // set custom request config
+        RequestConfig requestConfig = RequestConfig.custom()
+            // set timeout
+            .setConnectTimeout(Timeout.of(20, TimeUnit.SECONDS))
+            .setResponseTimeout(Timeout.of(20, TimeUnit.SECONDS))
+            // set other options in requestConfig...
+            .build();
 
-    Answer answer2 = bardClient.getAnswer(Question.builder().question("あなたの名前は何ですか").build());
-    Assertions.assertNotNull(answer2.getAnswer());
-  }
+        IBardClient bardClient = BardClient.builder(token)
+            .headers(headers).requestConfig(requestConfig).build();
+
+
+        Answer answer = bardClient.getAnswer("누구세요");
+        Assertions.assertNotNull(answer.getAnswer());
+
+        Answer answer2 = bardClient.getAnswer(Question.builder().question("あなたの名前は何ですか").build());
+        Assertions.assertNotNull(answer2.getAnswer());
+    }
 }
 ```
 

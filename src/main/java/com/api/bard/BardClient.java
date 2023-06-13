@@ -42,6 +42,10 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class BardClient implements IBardClient {
+    private static final RequestConfig DEFAULT_REQUEST_CONFIG = RequestConfig.custom()
+        .setConnectTimeout(Timeout.of(30, TimeUnit.SECONDS))
+        .setResponseTimeout(Timeout.of(30, TimeUnit.SECONDS))
+        .build();
 
     private static final String HOST = "bard.google.com";
     private static final String URL = "https://bard.google.com";
@@ -59,39 +63,39 @@ public class BardClient implements IBardClient {
     private String choiceId = "";
 
     private Map<String, String> headers;
-    private RequestConfig requestConfig = RequestConfig.custom()
-        .setConnectTimeout(Timeout.of(30, TimeUnit.SECONDS))
-        .setResponseTimeout(Timeout.of(30, TimeUnit.SECONDS))
-        .build();
+    private RequestConfig requestConfig;
 
     private int reqid = Integer.parseInt(String.format("%04d", new Random().nextInt(10000)));
     private URLCodec urlCodec = new URLCodec();
     private Gson gson = new Gson();
 
-
-    public BardClient(String token) {
-        this(token, null, null);
-    }
-
-    public BardClient(String token, Map<String, String> headers) {
-        this(token, headers, null);
-    }
-
-    public BardClient(String token, RequestConfig requestConfig) {
-        this(token, null, requestConfig);
-    }
-
-    public BardClient(@NonNull String token,
-                      Map<String, String> headers,
-                      RequestConfig requestConfig) {
+    private BardClient(String token) {
         this.token = token;
-        this.headers = headers;
+    }
 
-        if (requestConfig == null) {
-            this.requestConfig = RequestConfig.custom()
-                .setConnectTimeout(Timeout.of(30, TimeUnit.SECONDS))
-                .setResponseTimeout(Timeout.of(30, TimeUnit.SECONDS))
-                .build();
+    public static BardClientBuilder builder(@NonNull String token) {
+        return new BardClientBuilder(token);
+    }
+
+    public static class BardClientBuilder {
+        private final BardClient bardClient;
+
+        private BardClientBuilder(String token) {
+            bardClient = new BardClient(token);
+        }
+
+        public BardClientBuilder headers(Map<String, String> headers) {
+            bardClient.headers = headers;
+            return this;
+        }
+
+        public BardClientBuilder requestConfig(RequestConfig requestConfig) {
+            bardClient.requestConfig = requestConfig == null ? DEFAULT_REQUEST_CONFIG : requestConfig;
+            return this;
+        }
+
+        public BardClient build() {
+            return bardClient;
         }
     }
 
@@ -167,7 +171,7 @@ public class BardClient implements IBardClient {
             throw new IllegalArgumentException("token must end with a single dot. Enter correct __Secure-1PSID value.");
         }
 
-        try (CloseableHttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(requestConfig).build()) {
+        try (CloseableHttpClient httpClient = buildHttpClient()) {
             HttpUriRequestBase httpGet = new HttpGet(URL);
             addHeaders(httpGet);
 
@@ -188,6 +192,12 @@ public class BardClient implements IBardClient {
         }
     }
 
+    private CloseableHttpClient buildHttpClient() {
+        return HttpClients.custom()
+            .setDefaultRequestConfig(requestConfig)
+            .build();
+    }
+
     private String extractSNlM0e(String response) throws HttpResponseException {
         String pattern = "SNlM0e\":\"(.*?)\"";
         Pattern regex = Pattern.compile(pattern);
@@ -200,7 +210,7 @@ public class BardClient implements IBardClient {
 
     private BardResponse sendPostRequest(String url, Map<String, String> params, Map<String, String> data)
         throws IOException, ParseException {
-        try (CloseableHttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(requestConfig).build()) {
+        try (CloseableHttpClient httpClient = buildHttpClient()) {
             String queryParameters = buildPramsOrBody(params);
             HttpPost httpPost = new HttpPost(url + "?" + queryParameters);
             addHeaders(httpPost);

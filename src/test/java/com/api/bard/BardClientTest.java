@@ -27,7 +27,7 @@ public class BardClientTest {
      */
     @Test
     public void testGetAnswer_happyCase() {
-        IBardClient bardClient = new BardClient(token);
+        IBardClient bardClient = BardClient.builder(token).build();
 
         // Simplest way to get answer
         Answer answer = bardClient.getAnswer("Who is current president of USA?");
@@ -65,7 +65,9 @@ public class BardClientTest {
             // set other options in requestConfig...
             .build();
 
-        IBardClient bardClient = new BardClient(token, headers, requestConfig);
+        IBardClient bardClient = BardClient.builder(token)
+            .headers(headers).requestConfig(requestConfig).build();
+
 
         Answer answer = bardClient.getAnswer("누구세요");
         Assertions.assertNotNull(answer.getAnswer());
