@@ -238,7 +238,7 @@ public class BardClientTest {
         Assertions.assertTrue(answer3.isUsedTranslator());
 
         IBardClient bardClient2 = BardClient.builder(token)
-            // You can set other middleLanguage which supported by Bard, such as Japanese
+            // You can set other middleLanguage which supported by Bard, such as 'ja'
             .translator(new GoogleTranslatorProxy("ja"))
             .build();
 
