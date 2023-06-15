@@ -2,6 +2,7 @@ package com.api.bard;
 
 import com.api.bard.model.Answer;
 import com.api.bard.model.Question;
+import com.api.bard.translator.GoogleTranslatorProxy;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.core5.util.Timeout;
 import org.junit.jupiter.api.Assertions;
@@ -74,5 +75,35 @@ public class BardClientTest {
 
         Answer answer2 = bardClient.getAnswer(Question.builder().question("あなたの名前は何ですか").build());
         Assertions.assertNotNull(answer2.getAnswer());
+    }
+
+    /**
+     * Advanced usage: set translator to support languages other than English, Japanese or Korean
+     */
+    @Test
+    public void testGetAnswer_withTranslator() {
+        IBardClient bardClient = BardClient.builder(token)
+            .translator(new GoogleTranslatorProxy())
+            .build();
+
+        Answer answer = bardClient.getAnswer("누구세요");
+        Assertions.assertNotNull(answer.getAnswer());
+        Assertions.assertFalse(answer.isUsedTranslator());
+
+        Answer answer2 = bardClient.getAnswer(Question.builder().question("あなたの名前は何ですか").build());
+        Assertions.assertNotNull(answer2.getAnswer());
+        Assertions.assertFalse(answer2.isUsedTranslator());
+
+        IBardClient bardClient2 = BardClient.builder(token)
+            .translator(new GoogleTranslatorProxy("ja"))
+            .build();
+
+        Answer answer3 = bardClient2.getAnswer("How are you?");
+        Assertions.assertNotNull(answer3.getAnswer());
+        Assertions.assertFalse(answer3.isUsedTranslator());
+
+        Answer answer4 = bardClient2.getAnswer(Question.builder().question("你是谁？").build());
+        Assertions.assertNotNull(answer4.getAnswer());
+        Assertions.assertTrue(answer4.isUsedTranslator());
     }
 }

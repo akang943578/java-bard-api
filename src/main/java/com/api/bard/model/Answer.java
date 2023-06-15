@@ -13,6 +13,7 @@ public class Answer {
     private String conversationId;
     private String responseId;
     private String choiceId;
+    private boolean usedTranslator;
     private List<String> factualityQueries;
     private String textQuery;
     private List<Choice> choices;

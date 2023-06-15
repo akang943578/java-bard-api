@@ -3,6 +3,7 @@ package com.api.bard;
 import com.api.bard.exception.BardApiException;
 import com.api.bard.model.Answer;
 import com.api.bard.model.Question;
+import com.api.bard.translator.IBardTranslator;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -62,6 +63,7 @@ public class BardClient implements IBardClient {
     private String responseId = "";
     private String choiceId = "";
 
+    private IBardTranslator translator;
     private Map<String, String> headers;
     private RequestConfig requestConfig;
 
@@ -94,6 +96,11 @@ public class BardClient implements IBardClient {
             return this;
         }
 
+        public BardClientBuilder translator(IBardTranslator translator) {
+            bardClient.translator = translator;
+            return this;
+        }
+
         public BardClient build() {
             return bardClient;
         }
@@ -118,6 +125,18 @@ public class BardClient implements IBardClient {
                 this.snim0e = fetchSNlM0e();
             }
 
+            String questionInput = question.getQuestion();
+
+            boolean needTranslate = false;
+            String sourceLang = null;
+            if (translator != null) {
+                sourceLang = translator.detectLanguage(questionInput);
+                if (!IBardTranslator.SUPPORTED_LANGUAGES.contains(sourceLang)) {
+                    needTranslate = true;
+                    questionInput = translator.translate(sourceLang, translator.middleLanguage(), questionInput);
+                }
+            }
+
             Map<String, String> params = new LinkedHashMap<>();
             params.put("bl", "boq_assistant-bard-web-server_20230419.00_p1");
             params.put("_reqid", String.valueOf(reqid));
@@ -125,7 +144,7 @@ public class BardClient implements IBardClient {
 
             String fReq = String.format(
                 "[null,\"[[\\\"%s\\\"],null,[\\\"%s\\\",\\\"%s\\\",\\\"%s\\\"]]\"]",
-                question.getQuestion(), conversationId, responseId, choiceId);
+                questionInput, conversationId, responseId, choiceId);
 
             Map<String, String> data = new LinkedHashMap<>();
             data.put("f.req", fReq);
@@ -146,6 +165,13 @@ public class BardClient implements IBardClient {
             String jsonLine = responseLines[3];
 
             Answer answer = parseBardResult(jsonLine);
+
+            String answerOutput = answer.getAnswer();
+            if (needTranslate) {
+                answerOutput = translator.translate(translator.middleLanguage(), sourceLang, answerOutput);
+                answer.setAnswer(answerOutput);
+                answer.setUsedTranslator(true);
+            }
 
             this.conversationId = answer.getConversationId();
             this.responseId = answer.getResponseId();

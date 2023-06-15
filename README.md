@@ -38,7 +38,7 @@ Currently, it can be dependent by github maven repo.
     <dependency>
       <groupId>com.api.bard</groupId>
       <artifactId>java-bard-api</artifactId>
-      <version>1.0.1</version>
+      <version>1.2.0</version>
     </dependency>
   </dependencies>
 ```
@@ -179,10 +179,70 @@ public class BardClientTest {
 <br>
 
 ## Further
-### Support other multi natural languages
-As we know, Google Bard currently only support languages in ['en', 'ja', 'ko'], if you want to interact with Bard in other languages, please handle the translation yourself.
+### Support languages other than English, Japanese or Korean
+As we know, Google Bard currently only support languages in ['en', 'ja', 'ko'], if you want to interact with Bard in other languages, we have to handle the translation by ourselves.
 
-One of the most popular translation API is [Google Translate](https://cloud.google.com/translate/docs/basic/setup-basic), you can use it to translate your language to one of the supported languages, and then send the translated text to Bard.
+One of the most popular translation API is [Google Translate](https://cloud.google.com/translate/docs/basic/setup-basic), you can use it to translate your language to one of the supported languages, and then send the translated text to Bard. This API is not free of charge, you have to pay for it.
+
+But there is an unofficial java google translate package we can use: [java-google-speech](https://github.com/akang943578/java-google-speech)
+
+```java
+import com.api.bard.model.Answer;
+import com.api.bard.model.Question;
+import com.api.bard.translator.GoogleTranslatorProxy;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.core5.util.Timeout;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+public class BardClientTest {
+    private String token;
+
+    @BeforeEach
+    public void setup() {
+        token = System.getenv("_BARD_API_KEY");
+        Assertions.assertNotNull(token);
+    }
+
+    /**
+     * Advanced usage: set translator to support languages other than English, Japanese or Korean
+     */
+    @Test
+    public void testGetAnswer_withTranslator() {
+        IBardClient bardClient = BardClient.builder(token)
+            .translator(new GoogleTranslatorProxy())
+            .build();
+
+        Answer answer = bardClient.getAnswer("누구세요");
+        Assertions.assertNotNull(answer.getAnswer());
+        Assertions.assertFalse(answer.isUsedTranslator());
+
+        Answer answer2 = bardClient.getAnswer(Question.builder().question("あなたの名前は何ですか").build());
+        Assertions.assertNotNull(answer2.getAnswer());
+        Assertions.assertFalse(answer2.isUsedTranslator());
+
+        IBardClient bardClient2 = BardClient.builder(token)
+            .translator(new GoogleTranslatorProxy("ja"))
+            .build();
+
+        Answer answer3 = bardClient2.getAnswer("How are you?");
+        Assertions.assertNotNull(answer3.getAnswer());
+        Assertions.assertFalse(answer3.isUsedTranslator());
+
+        Answer answer4 = bardClient2.getAnswer(Question.builder().question("你是谁？").build());
+        Assertions.assertNotNull(answer4.getAnswer());
+        Assertions.assertTrue(answer4.isUsedTranslator());
+    }
+}
+```
+
+You can also implement your own translator by implementing the interface `IBardTranslator` and pass it to the builder.
 
 <br><br>
 
