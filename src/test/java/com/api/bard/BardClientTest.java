@@ -83,27 +83,42 @@ public class BardClientTest {
     @Test
     public void testGetAnswer_withTranslator() {
         IBardClient bardClient = BardClient.builder(token)
+            // Default middleLanguage is 'en'
             .translator(new GoogleTranslatorProxy())
             .build();
 
         Answer answer = bardClient.getAnswer("누구세요");
         Assertions.assertNotNull(answer.getAnswer());
+        // Korean is supported by Bard, so it should not use translator even set
         Assertions.assertFalse(answer.isUsedTranslator());
 
         Answer answer2 = bardClient.getAnswer(Question.builder().question("あなたの名前は何ですか").build());
         Assertions.assertNotNull(answer2.getAnswer());
+        // Japanese is supported by Bard, so it should not use translator even set
         Assertions.assertFalse(answer2.isUsedTranslator());
 
+        Answer answer3 = bardClient.getAnswer(Question.builder().question("你是谁？").build());
+        Assertions.assertNotNull(answer3.getAnswer());
+        // Chinese is not supported by Bard, so it should use the translator set, which middleLanguage is English
+        // This means the question is translated to English before interact with Bard, thus the answer is also in English from Bard
+        // And it will also translate the answer to Chinese before return
+        Assertions.assertTrue(answer3.isUsedTranslator());
+
         IBardClient bardClient2 = BardClient.builder(token)
+            // You can set other middleLanguage which supported by Bard, such as Japanese
             .translator(new GoogleTranslatorProxy("ja"))
             .build();
 
-        Answer answer3 = bardClient2.getAnswer("How are you?");
-        Assertions.assertNotNull(answer3.getAnswer());
-        Assertions.assertFalse(answer3.isUsedTranslator());
-
-        Answer answer4 = bardClient2.getAnswer(Question.builder().question("你是谁？").build());
+        Answer answer4 = bardClient2.getAnswer("How are you?");
         Assertions.assertNotNull(answer4.getAnswer());
-        Assertions.assertTrue(answer4.isUsedTranslator());
+        // English is supported by Bard, so it should not use translator even set
+        Assertions.assertFalse(answer4.isUsedTranslator());
+
+        Answer answer5 = bardClient2.getAnswer(Question.builder().question("你是谁？").build());
+        Assertions.assertNotNull(answer5.getAnswer());
+        // Chinese is not supported by Bard, so it should use the translator set, which middleLanguage is Japanese
+        // This means the question is translated to Japanese before interact with Bard, thus the answer is also in Japanese from Bard
+        // And it will also translate the answer to Chinese before return
+        Assertions.assertTrue(answer5.isUsedTranslator());
     }
 }
