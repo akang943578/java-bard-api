@@ -1,8 +1,27 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.api.bard</groupId>
+  <groupId>io.github.akang943578</groupId>
   <artifactId>java-bard-api</artifactId>
   <version>1.2.0</version>
+
+  <name>java-bard-api</name>
+  <url>https://github.com/akang943578</url>
+  <description>The java package that returns response of [Google Bard](https://bard.google.com/) through value of cookie.</description>
+
+  <licenses>
+    <license>
+      <name>Apache 2</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+      <comments>A business-friendly OSS license</comments>
+    </license>
+  </licenses>
+
+  <scm>
+    <url>https://github.com/akang943578</url>
+    <connection>https://github.com/akang943578/java-bard-api.git</connection>
+  </scm>
+
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
@@ -20,13 +39,6 @@
     <jacoco.unit-tests.limit.class-complexity>20</jacoco.unit-tests.limit.class-complexity>
     <jacoco.unit-tests.limit.method-complexity>5</jacoco.unit-tests.limit.method-complexity>
   </properties>
-
-  <repositories>
-    <repository>
-      <id>akang943578-maven-repo</id>
-      <url>https://raw.githubusercontent.com/akang943578/maven-repo/master/repository</url>
-    </repository>
-  </repositories>
 
   <dependencies>
     <dependency>
@@ -67,12 +79,87 @@
     </dependency>
 
     <dependency>
-      <groupId>com.dark.programs</groupId>
+      <groupId>io.github.akang943578</groupId>
       <artifactId>java-google-speech</artifactId>
-      <version>1.0.0</version>
+      <version>LATEST</version>
     </dependency>
 
   </dependencies>
+
+  <developers>
+    <developer>
+      <name>akang943578</name>
+      <id>akang943578</id>
+      <email>akang943578@gmail.com</email>
+      <roles>
+        <role>Developer</role>
+      </roles>
+      <timezone>+8</timezone>
+    </developer>
+  </developers>
+
+  <profiles>
+    <profile>
+      <id>release</id> <!-- used when deploy -->
+      <build>
+        <plugins>
+          <!-- Source -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>2.2.1</version>
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <!-- Javadoc -->
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>2.9.1</version>
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <!-- GPG -->
+          <plugin> <!-- extend sign -->
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>1.6</version>
+            <executions>
+              <execution>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+      <distributionManagement>
+        <snapshotRepository>
+          <id>oss</id><!-- server id configured in settings.xml-->
+          <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
+        </snapshotRepository>
+        <repository>
+          <id>oss</id>
+          <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+      </distributionManagement>
+    </profile>
+  </profiles>
+
   <build>
     <plugins>
       <plugin>

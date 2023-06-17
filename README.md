@@ -19,31 +19,22 @@ I referred to [this github repository(github.com/dsdanielpark/Bard-API)](https:/
 <br>
 
 ## Install
-TODO: Install this pacakge to maven central repo.
 
-Currently, it can be dependent by github maven repo.
+This package has been uploaded to Maven Central Repo.
 
-1. Add github repo into your pom.xml `repositories` section:
-```xml
-  <repositories>
-    <repository>
-        <id>akang943578-maven-repo</id>
-        <url>https://raw.githubusercontent.com/akang943578/maven-repo/master/repository</url>
-    </repository>
-  </repositories>
-```
-2. Add java-bard-api package into pom.xml `dependencies` section:
+1. Add java-bard-api package into pom.xml `dependencies` section:
+   * You can find the latest version in [Maven Central Repository](https://search.maven.org/search?q=g:io.github.akang943578%20AND%20a:java-bard-api)
 ```xml
   <dependencies>
     <dependency>
-      <groupId>com.api.bard</groupId>
+      <groupId>io.github.akang943578</groupId>
       <artifactId>java-bard-api</artifactId>
-      <version>1.2.0</version>
+      <version>LATEST</version>
     </dependency>
   </dependencies>
 ```
 
-3. Authentication
+2. Authentication
 > **Warning** Do not expose the `__Secure-1PSID`
 * Visit https://bard.google.com/
 * F12 for console
@@ -57,7 +48,7 @@ Set this cookie value in your profile, such as `~/.bash_profile` or `~/.zshrc` a
 export _BARD_API_KEY=XXXXXXXXX_*********************xxxxxxxxxyyyyyyyyyyyyyzz.
 ```
 
-4. Then you can use it in your java code. (Note: perhaps you need to restart your IDE to apply the environment variable)
+3. Then you can use it in your java code. (Note: perhaps you need to restart your IDE to apply the environment variable)
 ```java
 import com.api.bard.BardClient;
 
@@ -87,7 +78,7 @@ I am not a person, and I do not have any feelings or emotions. I am a computer p
 I am excited to see what the future holds for me, and I hope that I can continue to learn and grow. I also hope that I can be a helpful and informative resource for you.
 ```
 
-5. If you need to set multiple Cookie values
+4. If you need to set multiple Cookie values
 
 - [Bard Cookies](https://github.com/dsdanielpark/Bard-API/blob/main/README_DEV.md#bard-which-can-get-cookies) - After confirming that multiple cookie values are required to receive responses reliably in certain countries, I will deploy it for testing purposes. Please debug and create a pull request
 
