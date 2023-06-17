@@ -40,6 +40,8 @@ This package has been uploaded to Maven Central Repo.
 * F12 for console
 * Session: Application → Cookies → Copy the value of  `__Secure-1PSID` cookie.
 
+![](how_to_get_token.png)
+
 Note that while I referred to `__Secure-1PSID` value as an API key for convenience, it is not an officially provided API key.
 Cookie value subject to frequent changes. Verify the value again if an error occurs. Most errors occur when an invalid cookie value is entered.
 
@@ -164,6 +166,32 @@ public class BardClientTest {
         Answer answer2 = bardClient.getAnswer(Question.builder().question("あなたの名前は何ですか").build());
         Assertions.assertNotNull(answer2.getAnswer());
     }
+
+   /**
+    * Advanced usage: use advanced fields to get more information
+    * such as images, sources, relatedTopics, and raw response from google bard
+    */
+   @Test
+   public void testGetAnswer_withAdvancedFields() {
+      IBardClient bardClient = BardClient.builder(token).build();
+
+      Answer answer = bardClient.getAnswer("Give me a picture of White House");
+      Assertions.assertNotNull(answer.getAnswer());
+      // Korean is supported by Bard, so it should not use translator even set
+      Assertions.assertFalse(answer.isUsedTranslator());
+
+      // verification of images/sources/relatedTopics in response
+      Assertions.assertEquals(answer.getImages().size(), 1);
+      Assertions.assertTrue(answer.getSources().size() > 0);
+      Assertions.assertTrue(answer.getRelatedTopics().size() > 0);
+
+      // raw response from google bard, you can parse it by yourself
+      Assertions.assertNotNull(answer.getRawResponse());
+
+      // If images are available, get the decorated answer with images in markdown format
+      String markdownAnswer = answer.getMarkdownAnswer();
+      Assertions.assertNotNull(markdownAnswer);
+   }
 }
 ```
 
@@ -249,6 +277,10 @@ public class BardClientTest {
 ```
 
 You can also implement your own translator by implementing the interface `IBardTranslator` and pass it to the builder.
+
+### Get more example codes
+
+You can get more example codes in [BardClientTest.java](src/test/java/com/api/bard/BardClientTest.java)
 
 <br><br>
 

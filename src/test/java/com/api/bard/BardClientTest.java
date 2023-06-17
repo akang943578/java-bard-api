@@ -121,4 +121,30 @@ public class BardClientTest {
         // And it will also translate the answer to Chinese before return
         Assertions.assertTrue(answer5.isUsedTranslator());
     }
+
+    /**
+     * Advanced usage: use advanced fields to get more information
+     * such as images, sources, relatedTopics, and raw response from google bard
+     */
+    @Test
+    public void testGetAnswer_withAdvancedFields() {
+        IBardClient bardClient = BardClient.builder(token).build();
+
+        Answer answer = bardClient.getAnswer("Give me a picture of White House");
+        Assertions.assertNotNull(answer.getAnswer());
+        // Korean is supported by Bard, so it should not use translator even set
+        Assertions.assertFalse(answer.isUsedTranslator());
+
+        // verification of images/sources/relatedTopics in response
+        Assertions.assertEquals(answer.getImages().size(), 1);
+        Assertions.assertTrue(answer.getSources().size() > 0);
+        Assertions.assertTrue(answer.getRelatedTopics().size() > 0);
+
+        // raw response from google bard, you can parse it by yourself
+        Assertions.assertNotNull(answer.getRawResponse());
+
+        // If images are available, get the decorated answer with images in markdown format
+        String markdownAnswer = answer.getMarkdownAnswer();
+        Assertions.assertNotNull(markdownAnswer);
+    }
 }

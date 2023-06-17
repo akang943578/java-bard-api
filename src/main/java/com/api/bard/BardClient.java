@@ -32,6 +32,7 @@ import org.apache.hc.core5.util.Timeout;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -160,12 +161,7 @@ public class BardClient implements IBardClient {
                 throw new BardApiException("Response Error, bard response code: " + bardResponse.getCode());
             }
 
-            String response = bardResponse.getContent();
-            String[] responseLines = response.split("\n");
-            String jsonLine = responseLines[3];
-
-            Answer answer = parseBardResult(jsonLine);
-
+            Answer answer = parseBardResult(bardResponse.getContent());
             String answerOutput = answer.getAnswer();
             if (needTranslate) {
                 answerOutput = translator.translate(translator.middleLanguage(), sourceLang, answerOutput);
@@ -302,7 +298,10 @@ public class BardClient implements IBardClient {
         return encodedString;
     }
 
-    private Answer parseBardResult(String rawResult) {
+    private Answer parseBardResult(String rawResponse) {
+        String[] responseLines = rawResponse.split("\n");
+        String rawResult = responseLines[3];
+
         String usefulResult =
             gson.fromJson(rawResult, JsonArray.class).get(0).getAsJsonArray().get(2).getAsString();
 
@@ -341,7 +340,74 @@ public class BardClient implements IBardClient {
             // pass
         }
 
+        List<Answer.Image> images = null;
+        try {
+            images = new ArrayList<>();
+            JsonArray imagesJson = jsonElements.get(4).getAsJsonArray().get(0).getAsJsonArray().get(4).getAsJsonArray();
+
+            for (int i = 0; i < imagesJson.size(); i++) {
+                JsonArray imageJson = imagesJson.get(i).getAsJsonArray();
+                String url = imageJson.get(0).getAsJsonArray().get(0).getAsJsonArray().get(0).getAsString();
+                String markdownLabel = imageJson.get(2).getAsString();
+                String articleURL =  imageJson.get(1).getAsJsonArray().get(0).getAsJsonArray().get(0).getAsString();
+
+                Answer.Image image = Answer.Image.builder()
+                    .imageUrl(url)
+                    .imageMarker(markdownLabel)
+                    .detailsLink(articleURL)
+                    .build();
+                images.add(image);
+            }
+        } catch (Exception e) {
+            //pass
+        }
+
+        List<Answer.Source> sources = null;
+        try {
+            sources = new ArrayList<>();
+            JsonArray sourceArray = jsonElements.get(3).getAsJsonArray().get(0).getAsJsonArray();
+
+            for (int i = 0; i < sourceArray.size(); i++) {
+                JsonArray imageJson = sourceArray.get(i).getAsJsonArray();
+                int startIndexInAnswer = imageJson.get(0).getAsInt();
+                int endIndexInAnswer = imageJson.get(1).getAsInt();
+                String source = imageJson.get(2).getAsJsonArray().get(0).getAsString();
+
+                Answer.Source sourceObj = Answer.Source.builder()
+                    .startIndexInAnswer(startIndexInAnswer)
+                    .endIndexInAnswer(endIndexInAnswer)
+                    .rawContentInAnswer(content.substring(startIndexInAnswer, endIndexInAnswer))
+                    .sourceLink(source)
+                    .build();
+                sources.add(sourceObj);
+            }
+        } catch (Exception e) {
+            //pass
+        }
+
+        List<Answer.RelatedTopic> relatedTopics = null;
+        try {
+            relatedTopics = new ArrayList<>();
+            JsonArray imagesJson = jsonElements.get(2).getAsJsonArray();
+
+            for (int i = 0; i < imagesJson.size(); i++) {
+                JsonArray imageJson = imagesJson.get(i).getAsJsonArray();
+                String topic = imageJson.get(0).getAsString();
+                int num = imageJson.get(1).getAsInt();
+
+                Answer.RelatedTopic relatedTopic = Answer.RelatedTopic.builder()
+                    .topic(topic)
+                    .num(num)
+                    .build();
+
+                relatedTopics.add(relatedTopic);
+            }
+        } catch (Exception e) {
+            //pass
+        }
+
         return Answer.builder()
+            .rawResponse(rawResponse)
             .answer(content)
             .conversationId(conversationId)
             .responseId(responseId)
@@ -349,6 +415,9 @@ public class BardClient implements IBardClient {
             .factualityQueries(factualityQueries)
             .textQuery(textQuery)
             .choices(choices)
+            .images(images)
+            .sources(sources)
+            .relatedTopics(relatedTopics)
             .build();
     }
 }
