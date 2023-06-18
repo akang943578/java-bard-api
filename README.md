@@ -393,6 +393,7 @@ Sincerely grateful for any reports on new features or bugs. Your valuable feedba
 ## Reference
 [1] https://github.com/dsdanielpark/Bard-API <br>
 [2] https://github.com/acheong08/Bard <br>
+[3] https://github.com/LarryDpk/Google-Bard <br>
 
 <br>
 
