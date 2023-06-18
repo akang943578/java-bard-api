@@ -18,7 +18,7 @@ I referred to [this github repository(github.com/dsdanielpark/Bard-API)](https:/
 
 <br>
 
-## Install
+## Add Dependency
 
 This package has been uploaded to Maven Central Repo.
 
@@ -91,16 +91,10 @@ I am excited to see what the future holds for me, and I hope that I can continue
 ```java
 import com.api.bard.model.Answer;
 import com.api.bard.model.Question;
-import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.core5.util.Timeout;
+import com.api.bard.translator.GoogleTranslatorAdaptor;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public class BardClientTest {
    private String token;
@@ -137,14 +131,15 @@ public class BardClientTest {
    }
 
    /**
-    * Advanced usage: set custom http headers and timeout properties
+    * Advanced usage: customize connection properties,
+    * such as set custom http headers and timeout properties
     */
    @Test
    public void testGetAnswer_customConnection() {
       IBardClient bardClient = BardClient.builder(token)
-              // set decorator for connection to customize connection properties,
+              // set configurator to customize connection properties,
               // such as timeout, headers
-              .connectionDecorator(connection -> {
+              .connectionConfigurator(connection -> {
                  // set timeout
                  connection.setConnectTimeout(30000);
                  connection.setReadTimeout(50000);
@@ -152,6 +147,8 @@ public class BardClientTest {
                  //set customs headers
                  connection.setRequestProperty("TestHeader", "TestValue");
                  connection.setRequestProperty("TestHeader2", "TestValue2");
+
+                 // ... set others properties of connection
               })
               .build();
 
@@ -195,7 +192,7 @@ public class BardClientTest {
 ## Further
 
 ### Support languages other than English, Japanese or Korean
-As we know, Google Bard currently only support languages in ['en', 'ja', 'ko'], if you want to interact with Bard in other languages, we have to handle the translation by ourselves.
+As we know, Google Bard currently only support languages in ['en', 'ja', 'ko'], if you want to interact with Bard in other languages, you have to handle the translation by ourselves.
 
 One of the most popular translation API is [Google Translate](https://cloud.google.com/translate/docs/basic/setup-basic), you can use it to translate your language to one of the supported languages, and then send the translated text to Bard. This API is not free of charge, you have to pay for it.
 
@@ -204,17 +201,10 @@ But there is an unofficial java google translate package we can use: [java-googl
 ```java
 import com.api.bard.model.Answer;
 import com.api.bard.model.Question;
-import com.api.bard.translator.GoogleTranslatorProxy;
-import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.core5.util.Timeout;
+import com.api.bard.translator.GoogleTranslatorAdaptor;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 public class BardClientTest {
    private String token;
@@ -232,7 +222,7 @@ public class BardClientTest {
    public void testGetAnswer_withTranslator() {
       IBardClient bardClient = BardClient.builder(token)
               // Default middleLanguage is 'en'
-              .translator(GoogleTranslatorProxy.builder().build())
+              .translator(GoogleTranslatorAdaptor.builder().build())
               .build();
 
       Answer answer = bardClient.getAnswer("누구세요");
@@ -254,7 +244,7 @@ public class BardClientTest {
 
       IBardClient bardClient2 = BardClient.builder(token)
               // You can set other middleLanguage which supported by Bard, such as 'ja'
-              .translator(GoogleTranslatorProxy.builder().middleLanguage("ja").build())
+              .translator(GoogleTranslatorAdaptor.builder().middleLanguage("ja").build())
               .build();
 
       Answer answer4 = bardClient2.getAnswer("How are you?");
@@ -279,8 +269,7 @@ Google Bard is not available in some countries, so you must use proxy if you wan
 
 ```java
 import com.api.bard.model.Answer;
-import com.api.bard.model.Question;
-import com.api.bard.translator.GoogleTranslatorProxy;
+import com.api.bard.translator.GoogleTranslatorAdaptor;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -313,6 +302,7 @@ public class BardClientTest {
       IBardClient bardClient = BardClient.builder(token)
               .proxy(new Proxy(Proxy.Type.HTTP,
                       new InetSocketAddress("192.168.31.1", 7890)))
+              // Set authUser and authPassword if proxy needs authentication
               .auth(authUser, authPassword)
               .build();
 
@@ -321,13 +311,14 @@ public class BardClientTest {
       Assertions.assertFalse(answer.isUsedTranslator());
 
       // Set Socks5 proxy
-      // Note that if you need to set translator, you should set proxy for translator as well
       Proxy proxy = new Proxy(Proxy.Type.SOCKS,
               new InetSocketAddress("192.168.31.1", 7890));
       IBardClient bardClient2 = BardClient.builder(token)
+              // Set authUser and authPassword if proxy needs authentication
               .proxy(proxy)
               .auth(authUser, authPassword)
-              .translator(GoogleTranslatorProxy.builder()
+              // Note that if you need to set translator, you should set proxy for translator as well
+              .translator(GoogleTranslatorAdaptor.builder()
                       .proxy(proxy)
                       .auth(authUser, authPassword)
                       .build())

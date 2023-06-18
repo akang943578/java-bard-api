@@ -7,28 +7,28 @@ import lombok.NonNull;
 import java.io.IOException;
 import java.net.Proxy;
 
-public class GoogleTranslatorProxy implements IBardTranslator {
+public class GoogleTranslatorAdaptor implements IBardTranslator {
     private static final String DEFAULT_MIDDLE_LANGUAGE = "en";
 
     private String middleLanguage;
 
-    private GoogleTranslatorProxy() {
+    private GoogleTranslatorAdaptor() {
         this.middleLanguage = DEFAULT_MIDDLE_LANGUAGE;
     }
 
     public static Builder builder() {
-        return new GoogleTranslatorProxy.Builder();
+        return new GoogleTranslatorAdaptor.Builder();
     }
 
     public static class Builder {
-        private final GoogleTranslatorProxy googleTranslatorProxy;
+        private final GoogleTranslatorAdaptor googleTranslatorAdaptor;
 
         private Builder() {
-            googleTranslatorProxy = new GoogleTranslatorProxy();
+            googleTranslatorAdaptor = new GoogleTranslatorAdaptor();
         }
 
         public Builder middleLanguage(String middleLanguage) {
-            googleTranslatorProxy.middleLanguage = middleLanguage;
+            googleTranslatorAdaptor.middleLanguage = middleLanguage;
             return this;
         }
 
@@ -42,8 +42,8 @@ public class GoogleTranslatorProxy implements IBardTranslator {
             return this;
         }
 
-        public GoogleTranslatorProxy build() {
-            return googleTranslatorProxy;
+        public GoogleTranslatorAdaptor build() {
+            return googleTranslatorAdaptor;
         }
     }
 

@@ -2,7 +2,7 @@ package com.api.bard;
 
 import com.api.bard.model.Answer;
 import com.api.bard.model.Question;
-import com.api.bard.translator.GoogleTranslatorProxy;
+import com.api.bard.translator.GoogleTranslatorAdaptor;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,14 +51,15 @@ public class BardClientTest {
     }
 
     /**
-     * Advanced usage: set custom http headers and timeout properties
+     * Advanced usage: customize connection properties,
+     * such as set custom http headers and timeout properties
      */
     @Test
     public void testGetAnswer_customConnection() {
         IBardClient bardClient = BardClient.builder(token)
-            // set decorator for connection to customize connection properties,
+            // set configurator to customize connection properties,
             // such as timeout, headers
-            .connectionDecorator(connection -> {
+            .connectionConfigurator(connection -> {
                 // set timeout
                 connection.setConnectTimeout(30000);
                 connection.setReadTimeout(50000);
@@ -66,6 +67,8 @@ public class BardClientTest {
                 //set customs headers
                 connection.setRequestProperty("TestHeader", "TestValue");
                 connection.setRequestProperty("TestHeader2", "TestValue2");
+
+                // ... set others properties of connection
             })
             .build();
 
@@ -83,7 +86,7 @@ public class BardClientTest {
     public void testGetAnswer_withTranslator() {
         IBardClient bardClient = BardClient.builder(token)
             // Default middleLanguage is 'en'
-            .translator(GoogleTranslatorProxy.builder().build())
+            .translator(GoogleTranslatorAdaptor.builder().build())
             .build();
 
         Answer answer = bardClient.getAnswer("누구세요");
@@ -105,7 +108,7 @@ public class BardClientTest {
 
         IBardClient bardClient2 = BardClient.builder(token)
             // You can set other middleLanguage which supported by Bard, such as 'ja'
-            .translator(GoogleTranslatorProxy.builder().middleLanguage("ja").build())
+            .translator(GoogleTranslatorAdaptor.builder().middleLanguage("ja").build())
             .build();
 
         Answer answer4 = bardClient2.getAnswer("How are you?");
@@ -157,6 +160,7 @@ public class BardClientTest {
         IBardClient bardClient = BardClient.builder(token)
             .proxy(new Proxy(Proxy.Type.HTTP,
                 new InetSocketAddress("192.168.31.1", 7890)))
+            // Set authUser and authPassword if proxy needs authentication
             .auth(authUser, authPassword)
             .build();
 
@@ -165,13 +169,14 @@ public class BardClientTest {
         Assertions.assertFalse(answer.isUsedTranslator());
 
         // Set Socks5 proxy
-        // Note that if you need to set translator, you should set proxy for translator as well
         Proxy proxy = new Proxy(Proxy.Type.SOCKS,
             new InetSocketAddress("192.168.31.1", 7890));
         IBardClient bardClient2 = BardClient.builder(token)
+            // Set authUser and authPassword if proxy needs authentication
             .proxy(proxy)
             .auth(authUser, authPassword)
-            .translator(GoogleTranslatorProxy.builder()
+            // Note that if you need to set translator, you should set proxy for translator as well
+            .translator(GoogleTranslatorAdaptor.builder()
                 .proxy(proxy)
                 .auth(authUser, authPassword)
                 .build())

@@ -57,7 +57,7 @@ public class BardClient implements IBardClient {
     private String choiceId = "";
 
     private IBardTranslator translator;
-    private Consumer<HttpURLConnection> connectionDecorator;
+    private Consumer<HttpURLConnection> connectionConfigurator;
 
     private int reqid = Integer.parseInt(String.format("%04d", new Random().nextInt(10000)));
     private Gson gson = new Gson();
@@ -106,8 +106,8 @@ public class BardClient implements IBardClient {
             return this;
         }
 
-        public BardClientBuilder connectionDecorator(Consumer<HttpURLConnection> connectionDecorator) {
-            bardClient.connectionDecorator = connectionDecorator;
+        public BardClientBuilder connectionConfigurator(Consumer<HttpURLConnection> connectionConfigurator) {
+            bardClient.connectionConfigurator = connectionConfigurator;
             return this;
         }
 
@@ -212,8 +212,8 @@ public class BardClient implements IBardClient {
             HttpURLConnection connection = (HttpURLConnection) url.openConnection(proxy);
             connection.setRequestMethod("GET");
             addHeaders(connection);
-            if (connectionDecorator != null) {
-                connectionDecorator.accept(connection);
+            if (connectionConfigurator != null) {
+                connectionConfigurator.accept(connection);
             }
 
             int responseCode = connection.getResponseCode();
@@ -283,8 +283,8 @@ public class BardClient implements IBardClient {
         connection.setRequestMethod("POST");
         connection.setDoOutput(true);
         addHeaders(connection);
-        if (connectionDecorator != null) {
-            connectionDecorator.accept(connection);
+        if (connectionConfigurator != null) {
+            connectionConfigurator.accept(connection);
         }
 
         // Set request body
