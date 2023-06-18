@@ -11,52 +11,44 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.net.URLCodec;
-import org.apache.hc.client5.http.HttpResponseException;
-import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
-import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.ClassicHttpResponse;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.HttpEntity;
-import org.apache.hc.core5.http.HttpHeaders;
-import org.apache.hc.core5.http.ParseException;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.apache.hc.core5.util.Timeout;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.Authenticator;
+import java.net.HttpURLConnection;
+import java.net.PasswordAuthentication;
+import java.net.Proxy;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class BardClient implements IBardClient {
-    private static final RequestConfig DEFAULT_REQUEST_CONFIG = RequestConfig.custom()
-        .setConnectTimeout(Timeout.of(30, TimeUnit.SECONDS))
-        .setResponseTimeout(Timeout.of(30, TimeUnit.SECONDS))
-        .build();
-
     private static final String HOST = "bard.google.com";
-    private static final String URL = "https://bard.google.com";
+    private static final String BARD_URL = "https://bard.google.com";
     private static final String STREAM_GENERATE_URL =
-        URL + "/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate";
+        BARD_URL + "/_/BardChatUi/data/assistant.lamda.BardFrontendService/StreamGenerate";
     private static final String X_SAME_DOMAIN = "1";
     private static final String USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36";
     private static final String CONTENT_TYPE = "application/x-www-form-urlencoded;charset=UTF-8";
+
+    /**
+     * Proxy to use when making requests
+     */
+    private Proxy proxy = Proxy.NO_PROXY;
 
     private String token;
     private String snim0e = "";
@@ -65,11 +57,9 @@ public class BardClient implements IBardClient {
     private String choiceId = "";
 
     private IBardTranslator translator;
-    private Map<String, String> headers;
-    private RequestConfig requestConfig;
+    private Consumer<HttpURLConnection> connectionDecorator;
 
     private int reqid = Integer.parseInt(String.format("%04d", new Random().nextInt(10000)));
-    private URLCodec urlCodec = new URLCodec();
     private Gson gson = new Gson();
 
     private BardClient(String token) {
@@ -87,13 +77,37 @@ public class BardClient implements IBardClient {
             bardClient = new BardClient(token);
         }
 
-        public BardClientBuilder headers(Map<String, String> headers) {
-            bardClient.headers = headers;
+        /**
+         * Builder of Proxy to use when making requests
+         *
+         * @param proxy proxy to use when making requests
+         */
+        public BardClientBuilder proxy(Proxy proxy) {
+            bardClient.proxy = proxy;
             return this;
         }
 
-        public BardClientBuilder requestConfig(RequestConfig requestConfig) {
-            bardClient.requestConfig = requestConfig == null ? DEFAULT_REQUEST_CONFIG : requestConfig;
+        /**
+         * Builder of Authentication for the proxy
+         *
+         * @param authUser     authUser
+         * @param authPassword authPassword
+         */
+        public BardClientBuilder auth(String authUser, String authPassword) {
+            System.setProperty("jdk.http.auth.tunneling.disabledSchemes", "");
+            Authenticator.setDefault(
+                new Authenticator() {
+                    @Override
+                    public PasswordAuthentication getPasswordAuthentication() {
+                        return new PasswordAuthentication(authUser, authPassword.toCharArray());
+                    }
+                }
+            );
+            return this;
+        }
+
+        public BardClientBuilder connectionDecorator(Consumer<HttpURLConnection> connectionDecorator) {
+            bardClient.connectionDecorator = connectionDecorator;
             return this;
         }
 
@@ -193,34 +207,54 @@ public class BardClient implements IBardClient {
             throw new IllegalArgumentException("token must end with a single dot. Enter correct __Secure-1PSID value.");
         }
 
-        try (CloseableHttpClient httpClient = buildHttpClient()) {
-            HttpUriRequestBase httpGet = new HttpGet(URL);
-            addHeaders(httpGet);
+        try {
+            URL url = new URL(BARD_URL);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection(proxy);
+            connection.setRequestMethod("GET");
+            addHeaders(connection);
+            if (connectionDecorator != null) {
+                connectionDecorator.accept(connection);
+            }
 
-            ClassicHttpResponse response = httpClient.execute(httpGet);
-            int responseCode = response.getCode();
+            int responseCode = connection.getResponseCode();
             if (responseCode != 200) {
                 throw new BardApiException("Response code not 200. Response Status is " + responseCode);
             }
 
-            HttpEntity entity = response.getEntity();
-            String responseBody = EntityUtils.toString(entity);
-            EntityUtils.consume(entity);
+            InputStream inputStream = connection.getInputStream();
+            String responseBody = convertStreamToString(inputStream);
 
             return extractSNlM0e(responseBody);
-        } catch (IOException | ParseException e) {
+        } catch (IOException e) {
             log.error("fetchSNlM0e error", e);
             throw new BardApiException("fetchSNlM0e error", e);
         }
     }
 
-    private CloseableHttpClient buildHttpClient() {
-        return HttpClients.custom()
-            .setDefaultRequestConfig(requestConfig)
-            .build();
+    private void addHeaders(HttpURLConnection connection) {
+        // Set headers
+        connection.setRequestProperty("Host", HOST);
+        connection.setRequestProperty("User-Agent", USER_AGENT);
+        connection.setRequestProperty("Referer", BARD_URL);
+        connection.setRequestProperty("X-Same-Domain", X_SAME_DOMAIN);
+        connection.setRequestProperty("Content-Type", CONTENT_TYPE);
+        connection.setRequestProperty("Origin", BARD_URL);
+        connection.setRequestProperty("Cookie", "__Secure-1PSID=" + token);
     }
 
-    private String extractSNlM0e(String response) throws HttpResponseException {
+    private String convertStreamToString(InputStream inputStream) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        StringBuilder stringBuilder = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            stringBuilder.append(line).append("\n");
+        }
+        reader.close();
+        return stringBuilder.toString();
+    }
+
+
+    private String extractSNlM0e(String response) {
         String pattern = "SNlM0e\":\"(.*?)\"";
         Pattern regex = Pattern.compile(pattern);
         Matcher matcher = regex.matcher(response);
@@ -231,71 +265,56 @@ public class BardClient implements IBardClient {
     }
 
     private BardResponse sendPostRequest(String url, Map<String, String> params, Map<String, String> data)
-        throws IOException, ParseException {
-        try (CloseableHttpClient httpClient = buildHttpClient()) {
-            String queryParameters = buildPramsOrBody(params);
-            HttpPost httpPost = new HttpPost(url + "?" + queryParameters);
-            addHeaders(httpPost);
-
-            // Set request body
-            String requestBody = buildPramsOrBody(data);
-            HttpEntity requestEntity = new StringEntity(requestBody, ContentType.APPLICATION_FORM_URLENCODED);
-            httpPost.setEntity(requestEntity);
-
-            // Send the request
-            CloseableHttpResponse response = httpClient.execute(httpPost);
-            // Process the response
-            HttpEntity entity = response.getEntity();
-
-            if (entity != null) {
-                String responseString = EntityUtils.toString(entity);
-                EntityUtils.consume(entity);
-
-                // Process the responseString as needed
-                return BardResponse.builder()
-                    .code(response.getCode())
-                    .content(responseString)
-                    .build();
-            }
-            throw new BardApiException("response entity is null");
-        }
-    }
-
-    private void addHeaders(HttpUriRequestBase requestBase) {
-        // Set headers
-        requestBase.addHeader(HttpHeaders.HOST, HOST);
-        requestBase.addHeader(HttpHeaders.USER_AGENT, USER_AGENT);
-        requestBase.addHeader(HttpHeaders.REFERER, URL);
-        requestBase.addHeader("X-Same-Domain", X_SAME_DOMAIN);
-        requestBase.addHeader(HttpHeaders.CONTENT_TYPE, CONTENT_TYPE);
-        requestBase.addHeader("Origin", URL);
-        requestBase.addHeader("Cookie", "__Secure-1PSID=" + token);
-
-        if (headers != null && !headers.isEmpty()) {
-            for (Map.Entry<String, String> entry : headers.entrySet()) {
-                requestBase.addHeader(entry.getKey(), entry.getValue());
-            }
-        }
-    }
-
-    private String buildPramsOrBody(Map<String, String> params) throws UnsupportedEncodingException {
+        throws IOException {
+        // Build query parameters
         StringBuilder queryParameters = new StringBuilder();
         for (Map.Entry<String, String> entry : params.entrySet()) {
-            if (queryParameters.length() != 0) {
-                queryParameters.append("&");
-            }
-            queryParameters.append(entry.getKey());
-            queryParameters.append("=");
-            queryParameters.append(urlEncode(entry.getValue()));
+            queryParameters.append(URLEncoder.encode(entry.getKey(), "UTF-8"))
+                .append("=")
+                .append(URLEncoder.encode(entry.getValue(), "UTF-8"))
+                .append("&");
         }
-        return queryParameters.toString();
-    }
 
-    private String urlEncode(String originText) throws UnsupportedEncodingException {
-        // URL encode
-        String encodedString = urlCodec.encode(originText, StandardCharsets.UTF_8.name());
-        encodedString = encodedString.replace("+", "%20");
-        return encodedString;
+        // Create the URL
+        URL postUrl = new URL(url + "?" + queryParameters);
+
+        // Open a connection
+        HttpURLConnection connection = (HttpURLConnection) postUrl.openConnection(proxy);
+        connection.setRequestMethod("POST");
+        connection.setDoOutput(true);
+        addHeaders(connection);
+        if (connectionDecorator != null) {
+            connectionDecorator.accept(connection);
+        }
+
+        // Set request body
+        StringBuilder requestBody = new StringBuilder();
+        for (Map.Entry<String, String> entry : data.entrySet()) {
+            requestBody.append(URLEncoder.encode(entry.getKey(), "UTF-8"))
+                .append("=")
+                .append(URLEncoder.encode(entry.getValue(), "UTF-8"))
+                .append("&");
+        }
+
+        // Send the request
+        try (OutputStream outputStream = connection.getOutputStream()) {
+            byte[] requestBodyBytes = requestBody.toString().getBytes(StandardCharsets.UTF_8);
+            outputStream.write(requestBodyBytes);
+        }
+
+        // Process the response
+        int responseCode = connection.getResponseCode();
+        if (responseCode == HttpURLConnection.HTTP_OK) {
+            InputStream inputStream = connection.getInputStream();
+            String responseBody = convertStreamToString(inputStream);
+
+            return BardResponse.builder()
+                .code(responseCode)
+                .content(responseBody)
+                .build();
+        }
+
+        throw new BardApiException("Response code: " + responseCode);
     }
 
     private Answer parseBardResult(String rawResponse) {
@@ -349,7 +368,7 @@ public class BardClient implements IBardClient {
                 JsonArray imageJson = imagesJson.get(i).getAsJsonArray();
                 String url = imageJson.get(0).getAsJsonArray().get(0).getAsJsonArray().get(0).getAsString();
                 String markdownLabel = imageJson.get(2).getAsString();
-                String articleURL =  imageJson.get(1).getAsJsonArray().get(0).getAsJsonArray().get(0).getAsString();
+                String articleURL = imageJson.get(1).getAsJsonArray().get(0).getAsJsonArray().get(0).getAsString();
 
                 Answer.Image image = Answer.Image.builder()
                     .imageUrl(url)

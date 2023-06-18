@@ -3,24 +3,26 @@ package com.api.bard;
 import com.api.bard.model.Answer;
 import com.api.bard.model.Question;
 import com.api.bard.translator.GoogleTranslatorProxy;
-import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.core5.util.Timeout;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 
 public class BardClientTest {
     private String token;
+    private String authUser;
+    private String authPassword;
 
     @BeforeEach
     public void setup() {
         token = System.getenv("_BARD_API_KEY");
+        authUser = System.getenv("authUser");
+        authPassword = System.getenv("authPassword");
         Assertions.assertNotNull(token);
+        Assertions.assertNotNull(authUser);
+        Assertions.assertNotNull(authPassword);
     }
 
     /**
@@ -49,26 +51,23 @@ public class BardClientTest {
     }
 
     /**
-     * Advanced usage: set custom http headers and request config
+     * Advanced usage: set custom http headers and timeout properties
      */
     @Test
-    public void testGetAnswer_customClient() throws URISyntaxException {
-        // set custom headers
-        Map<String, String> headers = new HashMap<>();
-        headers.put("TestHeader", "TestValue");
-        headers.put("TestHeader2", "TestValue2");
-
-        // set custom request config
-        RequestConfig requestConfig = RequestConfig.custom()
-            // set timeout
-            .setConnectTimeout(Timeout.of(20, TimeUnit.SECONDS))
-            .setResponseTimeout(Timeout.of(20, TimeUnit.SECONDS))
-            // set other options in requestConfig...
-            .build();
-
+    public void testGetAnswer_customConnection() {
         IBardClient bardClient = BardClient.builder(token)
-            .headers(headers).requestConfig(requestConfig).build();
+            // set decorator for connection to customize connection properties,
+            // such as timeout, headers
+            .connectionDecorator(connection -> {
+                // set timeout
+                connection.setConnectTimeout(30000);
+                connection.setReadTimeout(50000);
 
+                //set customs headers
+                connection.setRequestProperty("TestHeader", "TestValue");
+                connection.setRequestProperty("TestHeader2", "TestValue2");
+            })
+            .build();
 
         Answer answer = bardClient.getAnswer("누구세요");
         Assertions.assertNotNull(answer.getAnswer());
@@ -84,7 +83,7 @@ public class BardClientTest {
     public void testGetAnswer_withTranslator() {
         IBardClient bardClient = BardClient.builder(token)
             // Default middleLanguage is 'en'
-            .translator(new GoogleTranslatorProxy())
+            .translator(GoogleTranslatorProxy.builder().build())
             .build();
 
         Answer answer = bardClient.getAnswer("누구세요");
@@ -106,7 +105,7 @@ public class BardClientTest {
 
         IBardClient bardClient2 = BardClient.builder(token)
             // You can set other middleLanguage which supported by Bard, such as 'ja'
-            .translator(new GoogleTranslatorProxy("ja"))
+            .translator(GoogleTranslatorProxy.builder().middleLanguage("ja").build())
             .build();
 
         Answer answer4 = bardClient2.getAnswer("How are you?");
@@ -146,5 +145,40 @@ public class BardClientTest {
         // If images are available, get the decorated answer with images in markdown format
         String markdownAnswer = answer.getMarkdownAnswer();
         Assertions.assertNotNull(markdownAnswer);
+    }
+
+    /**
+     * Advanced usage: set proxy if you can not access bard.google.com directly
+     * Tested in China, http/socks5 proxy is supported. Others are not tested.
+     */
+    @Test
+    public void test_withProxy() {
+        // Set Http proxy
+        IBardClient bardClient = BardClient.builder(token)
+            .proxy(new Proxy(Proxy.Type.HTTP,
+                new InetSocketAddress("192.168.31.1", 7890)))
+            .auth(authUser, authPassword)
+            .build();
+
+        Answer answer = bardClient.getAnswer("Give me a picture of White House");
+        Assertions.assertNotNull(answer.getAnswer());
+        Assertions.assertFalse(answer.isUsedTranslator());
+
+        // Set Socks5 proxy
+        // Note that if you need to set translator, you should set proxy for translator as well
+        Proxy proxy = new Proxy(Proxy.Type.SOCKS,
+            new InetSocketAddress("192.168.31.1", 7890));
+        IBardClient bardClient2 = BardClient.builder(token)
+            .proxy(proxy)
+            .auth(authUser, authPassword)
+            .translator(GoogleTranslatorProxy.builder()
+                .proxy(proxy)
+                .auth(authUser, authPassword)
+                .build())
+            .build();
+
+        Answer answer2 = bardClient2.getAnswer("今天是星期几?");
+        Assertions.assertNotNull(answer2.getAnswer());
+        Assertions.assertTrue(answer2.isUsedTranslator());
     }
 }

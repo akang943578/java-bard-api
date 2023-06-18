@@ -25,13 +25,11 @@ This package has been uploaded to Maven Central Repo.
 1. Add java-bard-api package into pom.xml `dependencies` section:
    * You can find the latest version in [Maven Central Repository](https://search.maven.org/search?q=g:io.github.akang943578%20AND%20a:java-bard-api)
 ```xml
-  <dependencies>
-    <dependency>
-      <groupId>io.github.akang943578</groupId>
-      <artifactId>java-bard-api</artifactId>
-      <version>LATEST</version>
-    </dependency>
-  </dependencies>
+<dependency>
+    <groupId>io.github.akang943578</groupId>
+    <artifactId>java-bard-api</artifactId>
+    <version>LATEST</version>
+</dependency>
 ```
 
 2. Authentication
@@ -56,13 +54,13 @@ import com.api.bard.BardClient;
 
 public class BardClientMain {
 
-    public static void main(String[] args) {
-        String token = System.getenv("_BARD_API_KEY");
-        IBardClient bardClient = BardClient.builder(token).build();
+   public static void main(String[] args) {
+      String token = System.getenv("_BARD_API_KEY");
+      IBardClient bardClient = BardClient.builder(token).build();
 
-        String answer = bardClient.getAnswer("Who are you?").getAnswer();
-        System.out.println(answer);
-    }
+      String answer = bardClient.getAnswer("Who are you?").getAnswer();
+      System.out.println(answer);
+   }
 }
 ```
 It will show original response from Bard:
@@ -105,67 +103,64 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class BardClientTest {
-    private String token;
+   private String token;
 
-    @BeforeEach
-    public void setup() {
-        token = System.getenv("_BARD_API_KEY");
-        Assertions.assertNotNull(token);
-    }
+   @BeforeEach
+   public void setup() {
+      token = System.getenv("_BARD_API_KEY");
+      Assertions.assertNotNull(token);
+   }
 
-    /**
-     * Simple usage
-     */
-    @Test
-    public void testGetAnswer_happyCase() {
-        IBardClient bardClient = BardClient.builder(token).build();
+   /**
+    * Simple usage
+    */
+   @Test
+   public void testGetAnswer_happyCase() {
+      IBardClient bardClient = BardClient.builder(token).build();
 
-        // Simplest way to get answer
-        Answer answer = bardClient.getAnswer("Who is current president of USA?");
-        Assertions.assertNotNull(answer.getAnswer());
+      // Simplest way to get answer
+      Answer answer = bardClient.getAnswer("Who is current president of USA?");
+      Assertions.assertNotNull(answer.getAnswer());
 
-        // Get answer with Question object
-        Answer answer2 = bardClient.getAnswer(
-            Question.builder()
-                .question("Who is his wife?")
-                .build());
-        Assertions.assertNotNull(answer2.getAnswer());
+      // Get answer with Question object
+      Answer answer2 = bardClient.getAnswer(
+              Question.builder()
+                      .question("Who is his wife?")
+                      .build());
+      Assertions.assertNotNull(answer2.getAnswer());
 
-        // Reset session
-        bardClient.reset();
+      // Reset session
+      bardClient.reset();
 
-        Answer answer3 = bardClient.getAnswer("Who is his wife?");
-        Assertions.assertNotNull(answer3.getAnswer());
-    }
+      Answer answer3 = bardClient.getAnswer("Who is his wife?");
+      Assertions.assertNotNull(answer3.getAnswer());
+   }
 
-    /**
-     * Advanced usage: set custom http headers and request config
-     */
-    @Test
-    public void testGetAnswer_customClient() throws URISyntaxException {
-        // set custom headers
-        Map<String, String> headers = new HashMap<>();
-        headers.put("TestHeader", "TestValue");
-        headers.put("TestHeader2", "TestValue2");
+   /**
+    * Advanced usage: set custom http headers and timeout properties
+    */
+   @Test
+   public void testGetAnswer_customConnection() {
+      IBardClient bardClient = BardClient.builder(token)
+              // set decorator for connection to customize connection properties,
+              // such as timeout, headers
+              .connectionDecorator(connection -> {
+                 // set timeout
+                 connection.setConnectTimeout(30000);
+                 connection.setReadTimeout(50000);
 
-        // set custom request config
-        RequestConfig requestConfig = RequestConfig.custom()
-            // set timeout
-            .setConnectTimeout(Timeout.of(20, TimeUnit.SECONDS))
-            .setResponseTimeout(Timeout.of(20, TimeUnit.SECONDS))
-            // set other options in requestConfig...
-            .build();
+                 //set customs headers
+                 connection.setRequestProperty("TestHeader", "TestValue");
+                 connection.setRequestProperty("TestHeader2", "TestValue2");
+              })
+              .build();
 
-        IBardClient bardClient = BardClient.builder(token)
-            .headers(headers).requestConfig(requestConfig).build();
+      Answer answer = bardClient.getAnswer("누구세요");
+      Assertions.assertNotNull(answer.getAnswer());
 
-
-        Answer answer = bardClient.getAnswer("누구세요");
-        Assertions.assertNotNull(answer.getAnswer());
-
-        Answer answer2 = bardClient.getAnswer(Question.builder().question("あなたの名前は何ですか").build());
-        Assertions.assertNotNull(answer2.getAnswer());
-    }
+      Answer answer2 = bardClient.getAnswer(Question.builder().question("あなたの名前は何ですか").build());
+      Assertions.assertNotNull(answer2.getAnswer());
+   }
 
    /**
     * Advanced usage: use advanced fields to get more information
@@ -198,6 +193,7 @@ public class BardClientTest {
 <br>
 
 ## Further
+
 ### Support languages other than English, Japanese or Korean
 As we know, Google Bard currently only support languages in ['en', 'ja', 'ko'], if you want to interact with Bard in other languages, we have to handle the translation by ourselves.
 
@@ -221,62 +217,128 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class BardClientTest {
-    private String token;
+   private String token;
 
-    @BeforeEach
-    public void setup() {
-        token = System.getenv("_BARD_API_KEY");
-        Assertions.assertNotNull(token);
-    }
+   @BeforeEach
+   public void setup() {
+      token = System.getenv("_BARD_API_KEY");
+      Assertions.assertNotNull(token);
+   }
 
-    /**
-     * Advanced usage: set translator to support languages other than English, Japanese or Korean
-     */
-    @Test
-    public void testGetAnswer_withTranslator() {
-        IBardClient bardClient = BardClient.builder(token)
-            // Default middleLanguage is 'en'
-            .translator(new GoogleTranslatorProxy())
-            .build();
+   /**
+    * Advanced usage: set translator to support languages other than English, Japanese or Korean
+    */
+   @Test
+   public void testGetAnswer_withTranslator() {
+      IBardClient bardClient = BardClient.builder(token)
+              // Default middleLanguage is 'en'
+              .translator(GoogleTranslatorProxy.builder().build())
+              .build();
 
-        Answer answer = bardClient.getAnswer("누구세요");
-        Assertions.assertNotNull(answer.getAnswer());
-        // Korean is supported by Bard, so it should not use translator even set
-        Assertions.assertFalse(answer.isUsedTranslator());
+      Answer answer = bardClient.getAnswer("누구세요");
+      Assertions.assertNotNull(answer.getAnswer());
+      // Korean is supported by Bard, so it should not use translator even set
+      Assertions.assertFalse(answer.isUsedTranslator());
 
-        Answer answer2 = bardClient.getAnswer(Question.builder().question("あなたの名前は何ですか").build());
-        Assertions.assertNotNull(answer2.getAnswer());
-        // Japanese is supported by Bard, so it should not use translator even set
-        Assertions.assertFalse(answer2.isUsedTranslator());
+      Answer answer2 = bardClient.getAnswer(Question.builder().question("あなたの名前は何ですか").build());
+      Assertions.assertNotNull(answer2.getAnswer());
+      // Japanese is supported by Bard, so it should not use translator even set
+      Assertions.assertFalse(answer2.isUsedTranslator());
 
-        Answer answer3 = bardClient.getAnswer(Question.builder().question("你是谁？").build());
-        Assertions.assertNotNull(answer3.getAnswer());
-        // Chinese is not supported by Bard, so it should use the translator set, which middleLanguage is English
-        // This means the question is translated to English before interact with Bard, thus the answer is also in English from Bard
-        // And it will also translate the answer to Chinese before return
-        Assertions.assertTrue(answer3.isUsedTranslator());
+      Answer answer3 = bardClient.getAnswer(Question.builder().question("你是谁？").build());
+      Assertions.assertNotNull(answer3.getAnswer());
+      // Chinese is not supported by Bard, so it should use the translator set, which middleLanguage is English
+      // This means the question is translated to English before interact with Bard, thus the answer is also in English from Bard
+      // And it will also translate the answer to Chinese before return
+      Assertions.assertTrue(answer3.isUsedTranslator());
 
-        IBardClient bardClient2 = BardClient.builder(token)
-            // You can set other middleLanguage which supported by Bard, such as 'ja'
-            .translator(new GoogleTranslatorProxy("ja"))
-            .build();
+      IBardClient bardClient2 = BardClient.builder(token)
+              // You can set other middleLanguage which supported by Bard, such as 'ja'
+              .translator(GoogleTranslatorProxy.builder().middleLanguage("ja").build())
+              .build();
 
-        Answer answer4 = bardClient2.getAnswer("How are you?");
-        Assertions.assertNotNull(answer4.getAnswer());
-        // English is supported by Bard, so it should not use translator even set
-        Assertions.assertFalse(answer4.isUsedTranslator());
+      Answer answer4 = bardClient2.getAnswer("How are you?");
+      Assertions.assertNotNull(answer4.getAnswer());
+      // English is supported by Bard, so it should not use translator even set
+      Assertions.assertFalse(answer4.isUsedTranslator());
 
-        Answer answer5 = bardClient2.getAnswer(Question.builder().question("你是谁？").build());
-        Assertions.assertNotNull(answer5.getAnswer());
-        // Chinese is not supported by Bard, so it should use the translator set, which middleLanguage is Japanese
-        // This means the question is translated to Japanese before interact with Bard, thus the answer is also in Japanese from Bard
-        // And it will also translate the answer to Chinese before return
-        Assertions.assertTrue(answer5.isUsedTranslator());
-    }
+      Answer answer5 = bardClient2.getAnswer(Question.builder().question("你是谁？").build());
+      Assertions.assertNotNull(answer5.getAnswer());
+      // Chinese is not supported by Bard, so it should use the translator set, which middleLanguage is Japanese
+      // This means the question is translated to Japanese before interact with Bard, thus the answer is also in Japanese from Bard
+      // And it will also translate the answer to Chinese before return
+      Assertions.assertTrue(answer5.isUsedTranslator());
+   }
 }
 ```
 
 You can also implement your own translator by implementing the interface `IBardTranslator` and pass it to the builder.
+
+### Use Proxy for http connection with Bard Server
+Google Bard is not available in some countries, so you must use proxy if you want to use Bard API in those countries.
+
+```java
+import com.api.bard.model.Answer;
+import com.api.bard.model.Question;
+import com.api.bard.translator.GoogleTranslatorProxy;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+
+public class BardClientTest {
+   private String token;
+   private String authUser;
+   private String authPassword;
+
+   @BeforeEach
+   public void setup() {
+      token = System.getenv("_BARD_API_KEY");
+      authUser = System.getenv("authUser");
+      authPassword = System.getenv("authPassword");
+      Assertions.assertNotNull(token);
+      Assertions.assertNotNull(authUser);
+      Assertions.assertNotNull(authPassword);
+   }
+
+   /**
+    * Advanced usage: set proxy if you can not access bard.google.com directly
+    * Tested in China, http/socks5 proxy is supported. Others are not tested.
+    */
+   @Test
+   public void test_withProxy() {
+      // Set Http proxy
+      IBardClient bardClient = BardClient.builder(token)
+              .proxy(new Proxy(Proxy.Type.HTTP,
+                      new InetSocketAddress("192.168.31.1", 7890)))
+              .auth(authUser, authPassword)
+              .build();
+
+      Answer answer = bardClient.getAnswer("Give me a picture of White House");
+      Assertions.assertNotNull(answer.getAnswer());
+      Assertions.assertFalse(answer.isUsedTranslator());
+
+      // Set Socks5 proxy
+      // Note that if you need to set translator, you should set proxy for translator as well
+      Proxy proxy = new Proxy(Proxy.Type.SOCKS,
+              new InetSocketAddress("192.168.31.1", 7890));
+      IBardClient bardClient2 = BardClient.builder(token)
+              .proxy(proxy)
+              .auth(authUser, authPassword)
+              .translator(GoogleTranslatorProxy.builder()
+                      .proxy(proxy)
+                      .auth(authUser, authPassword)
+                      .build())
+              .build();
+
+      Answer answer2 = bardClient2.getAnswer("今天是星期几?");
+      Assertions.assertNotNull(answer2.getAnswer());
+      Assertions.assertTrue(answer2.isUsedTranslator());
+   }
+}
+```
 
 ### Get more example codes
 

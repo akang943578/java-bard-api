@@ -2,20 +2,49 @@ package com.api.bard.translator;
 
 import com.api.bard.exception.BardTranslateException;
 import com.dark.programs.speech.translator.GoogleTranslate;
+import lombok.NonNull;
 
 import java.io.IOException;
+import java.net.Proxy;
 
 public class GoogleTranslatorProxy implements IBardTranslator {
     private static final String DEFAULT_MIDDLE_LANGUAGE = "en";
 
-    private final String middleLanguage;
+    private String middleLanguage;
 
-    public GoogleTranslatorProxy() {
-        this(DEFAULT_MIDDLE_LANGUAGE);
+    private GoogleTranslatorProxy() {
+        this.middleLanguage = DEFAULT_MIDDLE_LANGUAGE;
     }
 
-    public GoogleTranslatorProxy(String middleLanguage) {
-        this.middleLanguage = middleLanguage;
+    public static Builder builder() {
+        return new GoogleTranslatorProxy.Builder();
+    }
+
+    public static class Builder {
+        private final GoogleTranslatorProxy googleTranslatorProxy;
+
+        private Builder() {
+            googleTranslatorProxy = new GoogleTranslatorProxy();
+        }
+
+        public Builder middleLanguage(String middleLanguage) {
+            googleTranslatorProxy.middleLanguage = middleLanguage;
+            return this;
+        }
+
+        public Builder proxy(@NonNull Proxy proxy) {
+            GoogleTranslate.setProxy(proxy);
+            return this;
+        }
+
+        public Builder auth(String authUser, String authPassword) {
+            GoogleTranslate.setAuth(authUser, authPassword);
+            return this;
+        }
+
+        public GoogleTranslatorProxy build() {
+            return googleTranslatorProxy;
+        }
     }
 
     @Override
