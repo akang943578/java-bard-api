@@ -139,8 +139,8 @@ public class BardClientTest {
 
         // verification of images/sources/relatedTopics in response
         Assertions.assertEquals(answer.getImages().size(), 1);
-        Assertions.assertTrue(answer.getSources().size() > 0);
-        Assertions.assertTrue(answer.getRelatedTopics().size() > 0);
+        Assertions.assertFalse(answer.getSources().isEmpty());
+        Assertions.assertFalse(answer.getRelatedTopics().isEmpty());
 
         // raw response from google bard, you can parse it by yourself
         Assertions.assertNotNull(answer.getRawResponse());
@@ -156,10 +156,13 @@ public class BardClientTest {
      */
     @Test
     public void test_withProxy() {
+        String hostname = "192.168.31.1";
+        int port = 7890;
+
         // Set Http proxy
         IBardClient bardClient = BardClient.builder(token)
             .proxy(new Proxy(Proxy.Type.HTTP,
-                new InetSocketAddress("192.168.31.1", 7890)))
+                new InetSocketAddress(hostname, port)))
             // Set authUser and authPassword if proxy needs authentication
             .auth(authUser, authPassword)
             .build();
@@ -170,7 +173,7 @@ public class BardClientTest {
 
         // Set Socks5 proxy
         Proxy proxy = new Proxy(Proxy.Type.SOCKS,
-            new InetSocketAddress("192.168.31.1", 7890));
+            new InetSocketAddress(hostname, port));
         IBardClient bardClient2 = BardClient.builder(token)
             // Set authUser and authPassword if proxy needs authentication
             .proxy(proxy)
