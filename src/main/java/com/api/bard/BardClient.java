@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -253,7 +254,6 @@ public class BardClient implements IBardClient {
         return stringBuilder.toString();
     }
 
-
     private String extractSNlM0e(String response) {
         String pattern = "SNlM0e\":\"(.*?)\"";
         Pattern regex = Pattern.compile(pattern);
@@ -323,12 +323,32 @@ public class BardClient implements IBardClient {
 
         String usefulResult =
             gson.fromJson(rawResult, JsonArray.class).get(0).getAsJsonArray().get(2).getAsString();
-
         JsonArray jsonElements = gson.fromJson(usefulResult, JsonArray.class);
+
         String content = jsonElements.get(0).getAsJsonArray().get(0).getAsString();
         String conversationId = jsonElements.get(1).getAsJsonArray().get(0).getAsString();
         String responseId = jsonElements.get(1).getAsJsonArray().get(1).getAsString();
 
+        List<Answer.Choice> choices = parseChoices(jsonElements);
+        return Answer.builder()
+            .rawResponse(rawResponse)
+            .answer(content)
+            .conversationId(conversationId)
+            .responseId(responseId)
+            .factualityQueries(parseFactualityQueries(jsonElements))
+            .textQuery(parseTextQuery(jsonElements))
+            .choices(choices)
+            .choiceId(Optional.ofNullable(choices)
+                .map(x -> x.get(0))
+                .map(Answer.Choice::getId)
+                .orElse(""))
+            .images(parseImages(jsonElements))
+            .sources(parseSources(jsonElements, content))
+            .relatedTopics(parseRelationTopics(jsonElements))
+            .build();
+    }
+
+    private List<String> parseFactualityQueries (JsonArray jsonElements) {
         List<String> factualityQueries = null;
         try {
             factualityQueries = jsonElements.get(3)
@@ -338,12 +358,20 @@ public class BardClient implements IBardClient {
         } catch (Exception e) {
             // pass
         }
+        return factualityQueries;
+    }
+
+    private String parseTextQuery(JsonArray jsonElements) {
         String textQuery = null;
         try {
             textQuery = jsonElements.get(2).getAsJsonArray().get(0).getAsJsonArray().get(0).getAsString();
         } catch (Exception e) {
             // pass
         }
+        return textQuery;
+    }
+
+    private List<Answer.Choice> parseChoices(JsonArray jsonElements) {
         List<Answer.Choice> choices = null;
         try {
             choices = jsonElements.get(4).getAsJsonArray().asList().stream()
@@ -358,7 +386,10 @@ public class BardClient implements IBardClient {
         } catch (Exception e) {
             // pass
         }
+        return choices;
+    }
 
+    private List<Answer.Image> parseImages(JsonArray jsonElements) {
         List<Answer.Image> images = null;
         try {
             images = new ArrayList<>();
@@ -380,7 +411,10 @@ public class BardClient implements IBardClient {
         } catch (Exception e) {
             //pass
         }
+        return images;
+    }
 
+    private List<Answer.Source> parseSources(JsonArray jsonElements, String content) {
         List<Answer.Source> sources = null;
         try {
             sources = new ArrayList<>();
@@ -403,7 +437,10 @@ public class BardClient implements IBardClient {
         } catch (Exception e) {
             //pass
         }
+        return sources;
+    }
 
+    private List<Answer.RelatedTopic> parseRelationTopics(JsonArray jsonElements) {
         List<Answer.RelatedTopic> relatedTopics = null;
         try {
             relatedTopics = new ArrayList<>();
@@ -424,19 +461,6 @@ public class BardClient implements IBardClient {
         } catch (Exception e) {
             //pass
         }
-
-        return Answer.builder()
-            .rawResponse(rawResponse)
-            .answer(content)
-            .conversationId(conversationId)
-            .responseId(responseId)
-            .choiceId(choices.get(0).getId())
-            .factualityQueries(factualityQueries)
-            .textQuery(textQuery)
-            .choices(choices)
-            .images(images)
-            .sources(sources)
-            .relatedTopics(relatedTopics)
-            .build();
+        return relatedTopics;
     }
 }
